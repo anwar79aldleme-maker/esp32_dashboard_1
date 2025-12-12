@@ -1,172 +1,190 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>ESP32 Health Dashboard</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ESP32 Health Dashboard</title>
+
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<!-- Luxon & Adapter لحل مشكلة الوقت -->
+<script src="https://cdn.jsdelivr.net/npm/luxon@3/build/global/luxon.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1"></script>
+
+<style>
     body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background-color: #f5f7fa;
-      margin: 0;
-      padding: 0;
+        font-family: "Poppins", sans-serif;
+        background: #f6f8fa;
+        margin: 0;
+        padding: 0;
     }
-    header {
-      background-color: #3f51b5;
-      color: white;
-      text-align: center;
-      padding: 20px;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+
+    .header {
+        background: linear-gradient(135deg, #007bff, #0056d6);
+        padding: 20px;
+        text-align: center;
+        color: white;
+        font-size: 28px;
+        font-weight: 600;
+        letter-spacing: 1px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
     }
-    h1 {
-      margin: 0;
-      font-size: 2rem;
+
+    .container {
+        width: 90%;
+        max-width: 1200px;
+        margin: 25px auto;
     }
-    #status {
-      text-align: center;
-      color: red;
-      font-weight: bold;
-      margin: 15px 0;
+
+    .cards {
+        display: flex;
+        justify-content: space-between;
+        gap: 20px;
+        margin-bottom: 30px;
     }
-    .dashboard {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 30px;
-      padding: 20px;
-    }
+
     .card {
-      background: white;
-      border-radius: 15px;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-      padding: 20px;
-      width: 400px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
+        flex: 1;
+        background: white;
+        border-radius: 15px;
+        padding: 20px;
+        text-align: center;
+        box-shadow: 0 6px 15px rgba(0,0,0,0.1);
+        transition: 0.3s;
     }
-    .card h2 {
-      margin: 0;
-      margin-bottom: 10px;
-      font-size: 1.2rem;
-      color: #333;
+
+    .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.2);
     }
-    .value {
-      font-size: 2rem;
-      font-weight: bold;
-      margin-bottom: 15px;
-      color: #3f51b5;
+
+    .card-title {
+        font-size: 18px;
+        color: #555;
     }
-    canvas {
-      width: 100% !important;
-      height: 250px !important;
+
+    .card-value {
+        font-size: 38px;
+        margin-top: 10px;
+        font-weight: 600;
+        color: #007bff;
     }
-  </style>
+
+    .chart-box {
+        background: white;
+        padding: 20px;
+        border-radius: 15px;
+        box-shadow: 0 6px 15px rgba(0,0,0,0.1);
+    }
+</style>
 </head>
+
 <body>
-  <header>
-    <h1>ESP32 Health Dashboard</h1>
-  </header>
+<div class="header">ESP32 Health Monitoring Dashboard</div>
 
-  <div id="status"></div>
+<div class="container">
 
-  <div class="dashboard">
-    <div class="card">
-      <h2>Heart Rate (BPM)</h2>
-      <div class="value" id="heartrateValue">--</div>
-      <canvas id="heartrateChart"></canvas>
+    <!-- Cards -->
+    <div class="cards">
+        <div class="card">
+            <div class="card-title">Heart Rate (BPM)</div>
+            <div id="hrValue" class="card-value">--</div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">SpO₂ (%)</div>
+            <div id="spo2Value" class="card-value">--</div>
+        </div>
     </div>
 
-    <div class="card">
-      <h2>SpO2 (%)</h2>
-      <div class="value" id="spo2Value">--</div>
-      <canvas id="spo2Chart"></canvas>
+    <!-- Chart -->
+    <div class="chart-box">
+        <canvas id="healthChart" height="120"></canvas>
     </div>
-  </div>
 
-  <script>
-    let heartrateChart, spo2Chart;
+</div>
 
+<script>
+let chart;
+let dataValues = [];
+
+// Initialize Chart
+function initChart() {
+    const ctx = document.getElementById("healthChart").getContext("2d");
+
+    chart = new Chart(ctx, {
+        type: "line",
+        data: {
+            datasets: [
+                {
+                    label: "Heart Rate",
+                    borderColor: "#ff3b3b",
+                    borderWidth: 3,
+                    pointRadius: 2,
+                    data: [],
+                },
+                {
+                    label: "SpO2",
+                    borderColor: "#007bff",
+                    borderWidth: 3,
+                    pointRadius: 2,
+                    data: [],
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { position: "top" },
+            },
+            scales: {
+                x: {
+                    type: "time",
+                    time: { tooltipFormat: "HH:mm:ss" }
+                },
+                y: {
+                    beginAtZero: false
+                }
+            }
+        }
+    });
+}
+
+// Fetch Data
 async function fetchData() {
-  try {
-    const response = await fetch('/api/sensor');
-    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-    const data = await response.json();
-    return Array.isArray(data) ? data : [];
-  } catch (err) {
-    document.getElementById('status').textContent = `Error fetching data: ${err.message}`;
-    console.error(err);
-    return [];
-  }
+    try {
+        const res = await fetch("/api/sensor?ts=" + Date.now());
+        const json = await res.json();
+
+        dataValues = json.slice(-200); // آخر 200 قيمة
+
+        // Update Cards
+        if (dataValues.length > 0) {
+            const last = dataValues[dataValues.length - 1];
+            document.getElementById("hrValue").innerText = last.heartrate;
+            document.getElementById("spo2Value").innerText = last.spo2;
+        }
+
+        // Update Chart
+        chart.data.datasets[0].data = dataValues.map(d => ({ x: d.time, y: d.heartrate }));
+        chart.data.datasets[1].data = dataValues.map(d => ({ x: d.time, y: d.spo2 }));
+        chart.update();
+
+    } catch (err) {
+        console.error("Error fetching data:", err);
+    }
 }
 
-function updateValues(latest) {
-  document.getElementById('heartrateValue').textContent = latest ? latest.heartrate : '--';
-  document.getElementById('spo2Value').textContent = latest ? latest.spo2 : '--';
-}
+// Start
+initChart();
+fetchData();
+setInterval(fetchData, 2000);
 
-function renderCharts(sensorData) {
-  const timestamps = sensorData.map(d => new Date(d.time).toLocaleTimeString());
-  const heartrate = sensorData.map(d => d.heartrate);
-  const spo2 = sensorData.map(d => d.spo2);
+</script>
 
-  // تدمير Charts القديمة قبل إعادة إنشاء جديدة
-  if (heartrateChart) heartrateChart.destroy();
-  if (spo2Chart) spo2Chart.destroy();
-
-  heartrateChart = new Chart(document.getElementById('heartrateChart'), {
-    type: 'line',
-    data: {
-      labels: timestamps,
-      datasets: [{
-        label: 'Heart Rate',
-        data: heartrate,
-        borderColor: '#e53935',
-        backgroundColor: 'rgba(229,57,53,0.2)',
-        fill: true,
-        tension: 0.3
-      }]
-    },
-    options: { responsive: true, scales: { y: { beginAtZero: true, suggestedMax: 150 } } }
-  });
-
-  spo2Chart = new Chart(document.getElementById('spo2Chart'), {
-    type: 'line',
-    data: {
-      labels: timestamps,
-      datasets: [{
-        label: 'SpO2',
-        data: spo2,
-        borderColor: '#1e88e5',
-        backgroundColor: 'rgba(30,136,229,0.2)',
-        fill: true,
-        tension: 0.3
-      }]
-    },
-    options: { responsive: true, scales: { y: { beginAtZero: true, suggestedMax: 100 } } }
-  });
-}
-
-async function refreshDashboard() {
-  const sensorData = await fetchData();
-
-  if (!sensorData || sensorData.length === 0) {
-    document.getElementById('status').textContent = 'No data available.';
-    updateValues(null);
-    renderCharts([]);
-    return;
-  }
-
-  document.getElementById('status').textContent = '';
-  const latest = sensorData[sensorData.length - 1];
-  updateValues(latest);
-  renderCharts(sensorData);
-}
-
-// تحديث عند تحميل الصفحة وأيضًا كل 10 ثوانٍ
-refreshDashboard();
-setInterval(refreshDashboard, 10000);
-
-  </script>
 </body>
 </html>
