@@ -6,16 +6,13 @@
 <title>ESP32 Cyber Dashboard</title>
 
 <style>
-/* ========== RESET ========== */
 body, html {
   margin: 0;
   padding: 0;
   font-family: "Segoe UI", sans-serif;
   transition: background 0.4s ease, color 0.4s ease;
-  overflow-x: hidden;
 }
 
-/* ========== DARK / LIGHT MODE ========== */
 body.dark {
   background: #0a0f1a;
   color: #e0e0e0;
@@ -25,7 +22,6 @@ body.light {
   color: #111;
 }
 
-/* ========== CONTAINER ========== */
 .dashboard {
   width: 95%;
   margin: 20px auto;
@@ -34,7 +30,6 @@ body.light {
   gap: 15px;
 }
 
-/* ========== CARD STYLE ========== */
 .card {
   background: rgba(0,0,0,0.35);
   backdrop-filter: blur(12px);
@@ -49,13 +44,11 @@ body.light {
   transform: scale(1.03);
 }
 
-/* Animation */
 @keyframes pop {
   from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* ========== TITLE ========== */
 h2 {
   text-align: center;
   margin: 15px 0;
@@ -64,13 +57,11 @@ h2 {
   animation: glow 2s infinite alternate;
 }
 
-/* Glow animation */
 @keyframes glow {
   from { text-shadow: 0 0 4px cyan; }
   to { text-shadow: 0 0 12px cyan; }
 }
 
-/* ========== DARK/LIGHT BUTTON ========== */
 #modeBtn {
   position: fixed;
   right: 20px;
@@ -87,7 +78,6 @@ h2 {
   background: #00a4a4;
 }
 
-/* ========== CHARTS ========== */
 canvas {
   width: 100% !important;
   height: 200px !important;
@@ -123,8 +113,8 @@ canvas {
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
-/* ========== DARK/LIGHT MODE SWITCH ========== */
-document.getElementById("modeBtn").onclick = () => {
+/* DARK / LIGHT */
+modeBtn.onclick = () => {
   const body = document.body;
   if (body.classList.contains("dark")) {
     body.classList.replace("dark", "light");
@@ -135,12 +125,12 @@ document.getElementById("modeBtn").onclick = () => {
   }
 };
 
-/* ========== INITIAL CHART DATA ========== */
+/* CHART DATA */
 let hrData = [];
 let spoData = [];
 let labels = [];
 
-/* ========== CHARTS ========== */
+/* HEARTRATE CHART */
 const heartrateChart = new Chart(document.getElementById("heartrateChart"), {
   type: "line",
   data: {
@@ -148,11 +138,16 @@ const heartrateChart = new Chart(document.getElementById("heartrateChart"), {
     datasets: [{
       label: "Heart Rate",
       data: hrData,
-      borderWidth: 2
+      borderColor: "cyan",
+      borderWidth: 2,
+      pointRadius: 0,
+      tension: 0.3
     }]
-  }
+  },
+  options: { responsive: true }
 });
 
+/* SPO2 CHART */
 const spo2Chart = new Chart(document.getElementById("spo2Chart"), {
   type: "line",
   data: {
@@ -160,18 +155,27 @@ const spo2Chart = new Chart(document.getElementById("spo2Chart"), {
     datasets: [{
       label: "SpO₂",
       data: spoData,
-      borderWidth: 2
+      borderColor: "lime",
+      borderWidth: 2,
+      pointRadius: 0,
+      tension: 0.3
     }]
-  }
+  },
+  options: { responsive: true }
 });
 
-/* ========== FETCH DATA FROM API ========== */
+/* FETCH API DATA */
 async function fetchData() {
   try {
     const res = await fetch("/api/get");
-    const data = await res.json();
 
-    if (!Array.isArray(data)) return;
+    if (!res.ok) {
+      console.log("API returned:", res.status);
+      return;
+    }
+
+    const data = await res.json();
+    if (!Array.isArray(data) || data.length === 0) return;
 
     labels.length = 0;
     hrData.length = 0;
@@ -184,14 +188,15 @@ async function fetchData() {
     });
 
     const last = data[data.length - 1];
+
     document.getElementById("lastReading").innerText =
-      `HR: ${last.heartrate} BPM   |   SpO₂: ${last.spo2}%`;
+      `HR: ${last.heartrate} BPM | SpO₂: ${last.spo2}%`;
 
     heartrateChart.update();
     spo2Chart.update();
 
   } catch (err) {
-    console.error("Fetch Error:", err);
+    console.error("Fetch Error:", err.message);
   }
 }
 
