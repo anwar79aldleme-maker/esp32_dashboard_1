@@ -1,15 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ESP32 Cyber Dashboard</title>
+
 <style>
-/* DARK / LIGHT MODE */
+/* =================== RESET =================== */
+body, html {
+  margin: 0;
+  padding: 0;
+  font-family: "Segoe UI", sans-serif;
+  transition: background 0.4s ease, color 0.4s ease;
+  overflow-x: hidden;
+}
+
+/* =================== DARK / LIGHT MODE =================== */
 body.dark {
   background: #0a0f1a;
   color: #e0e0e0;
 }
 body.light {
-  background: #e0f7fa; /* خلفية فاتحة أزرق باهت */
-  color: #004d40;      /* نص داكن أزرق غامق */
+  background: #e0f7fa; /* Light Mode background */
+  color: #004d40;      /* Light Mode text */
 }
 
-/* البطاقات */
+/* =================== DASHBOARD GRID =================== */
+.dashboard {
+  width: 95%;
+  margin: 20px auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 15px;
+}
+
+/* =================== CARD STYLE =================== */
 .card {
   background: rgba(0,0,0,0.35);
   backdrop-filter: blur(12px);
@@ -18,22 +43,162 @@ body.light {
   padding: 15px;
   box-shadow: 0 0 15px rgba(0,255,255,0.12);
   animation: pop 0.7s ease;
-  transition: transform 0.2s ease, background 0.4s ease, border 0.4s ease;
+  transition: transform 0.2s ease, background 0.4s ease, border 0.4s ease, box-shadow 0.4s ease;
+}
+.card:hover {
+  transform: scale(1.03);
 }
 
-/* للـ Light Mode: تعديل البطاقة */
+/* Light Mode Cards */
 body.light .card {
   background: rgba(255, 255, 255, 0.8);
   border: 1px solid rgba(0, 150, 136, 0.4);
   box-shadow: 0 0 10px rgba(0,150,136,0.3);
 }
 
-/* زر الوضع */
+/* =================== ANIMATIONS =================== */
+@keyframes pop {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* =================== TITLE =================== */
+h2 {
+  text-align: center;
+  margin: 15px 0;
+  font-size: 26px;
+  text-shadow: 0 0 6px cyan;
+  animation: glow 2s infinite alternate;
+}
+@keyframes glow {
+  from { text-shadow: 0 0 4px cyan; }
+  to { text-shadow: 0 0 12px cyan; }
+}
+
+/* =================== DARK/LIGHT BUTTON =================== */
 #modeBtn {
-  background: #00bcd4; /* أزرق متوسط */
+  position: fixed;
+  right: 20px;
+  top: 15px;
+  padding: 10px 16px;
+  background: #00bcd4;
   color: #fff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: 0.3s;
 }
 #modeBtn:hover {
-  background: #00796b; /* أخضر أزرق داكن */
+  background: #00796b;
+}
+
+/* =================== CHARTS =================== */
+canvas {
+  width: 100% !important;
+  height: 200px !important;
+}
+
+/* =================== LAST READING =================== */
+#lastReading {
+  font-size: 20px;
+  margin-top: 15px;
+  text-align: center;
 }
 </style>
+</head>
+
+<body class="dark">
+
+<button id="modeBtn">Light Mode</button>
+
+<h2>⚡ ESP32 Cyber Dashboard</h2>
+
+<div class="dashboard">
+
+  <div class="card">
+    <h3>Heart Rate (BPM)</h3>
+    <canvas id="heartrateChart"></canvas>
+  </div>
+
+  <div class="card">
+    <h3>SpO₂ (%)</h3>
+    <canvas id="spo2Chart"></canvas>
+  </div>
+
+  <div class="card">
+    <h3>Last Reading</h3>
+    <p id="lastReading">Waiting...</p>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+/* =================== DARK/LIGHT MODE SWITCH =================== */
+const modeBtn = document.getElementById("modeBtn");
+modeBtn.onclick = () => {
+  const body = document.body;
+  if (body.classList.contains("dark")) {
+    body.classList.replace("dark", "light");
+    modeBtn.textContent = "Dark Mode";
+  } else {
+    body.classList.replace("light", "dark");
+    modeBtn.textContent = "Light Mode";
+  }
+};
+
+/* =================== CHART DATA =================== */
+let hrData = [];
+let spoData = [];
+let labels = [];
+
+/* =================== CHARTS =================== */
+const heartrateChart = new Chart(document.getElementById("heartrateChart"), {
+  type: "line",
+  data: { labels, datasets: [{ label: "Heart Rate", data: hrData, borderWidth: 2, borderColor: "#00ffff", backgroundColor: "rgba(0,255,255,0.1)" }] },
+  options: { responsive:true, animation: { duration: 600 }, scales: { y: { beginAtZero: true } } }
+});
+
+const spo2Chart = new Chart(document.getElementById("spo2Chart"), {
+  type: "line",
+  data: { labels, datasets: [{ label: "SpO₂", data: spoData, borderWidth: 2, borderColor: "#ff00ff", backgroundColor: "rgba(255,0,255,0.1)" }] },
+  options: { responsive:true, animation: { duration: 600 }, scales: { y: { beginAtZero: true } } }
+});
+
+/* =================== FETCH DATA =================== */
+async function fetchData() {
+  try {
+    const res = await fetch("/api/get");
+    const data = await res.json();
+    if (!Array.isArray(data)) return;
+
+    labels.length = 0;
+    hrData.length = 0;
+    spoData.length = 0;
+
+    data.forEach(d => {
+      labels.push(""); // Empty labels for spacing
+      hrData.push(d.heartrate);
+      spoData.push(d.spo2);
+    });
+
+    const last = data[data.length - 1];
+    document.getElementById("lastReading").innerText =
+      `HR: ${last.heartrate} BPM   |   SpO₂: ${last.spo2}%`;
+
+    heartrateChart.update();
+    spo2Chart.update();
+  } catch (err) {
+    console.error("Fetch Error:", err);
+  }
+}
+
+/* =================== AUTO REFRESH =================== */
+setInterval(fetchData, 2000);
+fetchData();
+</script>
+
+</body>
+</html>
