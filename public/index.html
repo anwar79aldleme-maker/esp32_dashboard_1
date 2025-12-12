@@ -52,10 +52,7 @@ h2 {
   text-shadow: 0 0 6px cyan;
   animation: glow 2s infinite alternate;
 }
-@keyframes glow {
-  from { text-shadow: 0 0 4px cyan; }
-  to { text-shadow: 0 0 12px cyan; }
-}
+@keyframes glow { from { text-shadow: 0 0 4px cyan; } to { text-shadow: 0 0 12px cyan; } }
 
 /* ===== MODE BUTTON ===== */
 #modeBtn {
@@ -78,6 +75,11 @@ canvas { width: 100% !important; height: 220px !important; }
 
 /* ===== LAST READING ===== */
 #lastReading { font-size: 20px; margin-top: 15px; text-align: center; }
+
+/* ===== RESPONSIVE ===== */
+@media(max-width:500px){
+  .dashboard { grid-template-columns: 1fr; }
+}
 </style>
 </head>
 
@@ -118,56 +120,57 @@ let hrData=[], spoData=[], labels=[];
 
 const heartrateChart = new Chart(document.getElementById("heartrateChart"), {
   type: 'line',
-  data: { labels: labels, datasets: [{
-    label: 'Heart Rate',
-    data: hrData,
-    borderColor: '#00ffff',
-    backgroundColor: 'rgba(0,255,255,0.2)',
-    tension: 0.4,
-    borderWidth: 2,
-    fill: true,
-    pointRadius: 3,
-    pointHoverRadius: 6
-  }]},
+  data: {
+    labels: labels,
+    datasets: [{
+      label: 'Heart Rate',
+      data: hrData,
+      borderColor: '#00ffff',
+      backgroundColor: 'rgba(0,255,255,0.2)',
+      tension: 0.4,
+      borderWidth: 2,
+      fill: true,
+      pointRadius: 3,
+      pointHoverRadius: 6
+    }]
+  },
   options: {
     responsive: true,
     animation:{ duration:600 },
     plugins:{ legend:{ display:true, labels:{ color:'#00ffff' } } },
-    scales: {
-      y:{ beginAtZero:true, ticks:{ color:'#00ffff' } },
-      x:{ ticks:{ color:'#00ffff' } }
-    }
+    scales: { y:{ beginAtZero:true, ticks:{ color:'#00ffff' } }, x:{ ticks:{ color:'#00ffff' } } }
   }
 });
 
 const spo2Chart = new Chart(document.getElementById("spo2Chart"), {
   type:'line',
-  data:{ labels:labels, datasets:[{
-    label:'SpO₂',
-    data:spoData,
-    borderColor:'#ff00ff',
-    backgroundColor:'rgba(255,0,255,0.2)',
-    tension:0.4,
-    borderWidth:2,
-    fill:true,
-    pointRadius:3,
-    pointHoverRadius:6
-  }]},
+  data:{
+    labels:labels,
+    datasets:[{
+      label:'SpO₂',
+      data:spoData,
+      borderColor:'#ff00ff',
+      backgroundColor:'rgba(255,0,255,0.2)',
+      tension:0.4,
+      borderWidth:2,
+      fill:true,
+      pointRadius:3,
+      pointHoverRadius:6
+    }]
+  },
   options:{
     responsive:true,
     animation:{ duration:600 },
     plugins:{ legend:{ display:true, labels:{ color:'#ff00ff' } } },
-    scales:{
-      y:{ beginAtZero:true, ticks:{ color:'#ff00ff' } },
-      x:{ ticks:{ color:'#ff00ff' } }
-    }
+    scales:{ y:{ beginAtZero:true, ticks:{ color:'#ff00ff' } }, x:{ ticks:{ color:'#ff00ff' } } }
   }
 });
 
 /* ===== FETCH DATA FROM API ===== */
 async function fetchData() {
   try {
-    const res = await fetch("/api/get");
+    const res = await fetch("/api/get"); // API endpoint
+    if(!res.ok) throw new Error(`HTTP error ${res.status}`);
     const data = await res.json();
     if(!Array.isArray(data)) return;
 
@@ -184,7 +187,6 @@ async function fetchData() {
 
     heartrateChart.update();
     spo2Chart.update();
-
   } catch(err) { console.error("Fetch Error:", err); }
 }
 
