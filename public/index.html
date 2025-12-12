@@ -1,32 +1,15 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ESP32 Cyber Dashboard - Offline Mode</title>
-
 <style>
-body, html {
-  margin: 0;
-  padding: 0;
-  font-family: "Segoe UI", sans-serif;
-  transition: background 0.4s ease, color 0.4s ease;
-}
+/* DARK / LIGHT MODE */
 body.dark {
   background: #0a0f1a;
   color: #e0e0e0;
 }
 body.light {
-  background: #f5f5f5;
-  color: #111;
+  background: #e0f7fa; /* خلفية فاتحة أزرق باهت */
+  color: #004d40;      /* نص داكن أزرق غامق */
 }
-.dashboard {
-  width: 95%;
-  margin: 20px auto;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 15px;
-}
+
+/* البطاقات */
 .card {
   background: rgba(0,0,0,0.35);
   backdrop-filter: blur(12px);
@@ -35,90 +18,22 @@ body.light {
   padding: 15px;
   box-shadow: 0 0 15px rgba(0,255,255,0.12);
   animation: pop 0.7s ease;
-  transition: transform 0.2s ease;
+  transition: transform 0.2s ease, background 0.4s ease, border 0.4s ease;
 }
-.card:hover { transform: scale(1.03); }
-@keyframes pop { from {opacity:0; transform:translateY(20px);} to {opacity:1; transform:translateY(0);} }
-h2 { text-align:center; margin:15px 0; font-size:26px; text-shadow:0 0 6px cyan; animation: glow 2s infinite alternate; }
-@keyframes glow { from {text-shadow:0 0 4px cyan;} to {text-shadow:0 0 12px cyan;} }
-#modeBtn { position: fixed; right: 20px; top: 15px; padding: 10px 16px; background: cyan; border:none; border-radius:8px; cursor:pointer; font-weight:bold; transition:0.3s; }
-#modeBtn:hover { background:#00a4a4; }
-canvas { width: 100% !important; height: 200px !important; }
+
+/* للـ Light Mode: تعديل البطاقة */
+body.light .card {
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(0, 150, 136, 0.4);
+  box-shadow: 0 0 10px rgba(0,150,136,0.3);
+}
+
+/* زر الوضع */
+#modeBtn {
+  background: #00bcd4; /* أزرق متوسط */
+  color: #fff;
+}
+#modeBtn:hover {
+  background: #00796b; /* أخضر أزرق داكن */
+}
 </style>
-</head>
-<body class="dark">
-
-<button id="modeBtn">Light Mode</button>
-<h2>⚡ ESP32 Cyber Dashboard (Offline)</h2>
-
-<div class="dashboard">
-  <div class="card">
-    <h3>Heart Rate (BPM)</h3>
-    <canvas id="heartrateChart"></canvas>
-  </div>
-  <div class="card">
-    <h3>SpO₂ (%)</h3>
-    <canvas id="spo2Chart"></canvas>
-  </div>
-  <div class="card">
-    <h3>Last Reading</h3>
-    <p id="lastReading" style="font-size:20px; margin-top:15px;">Waiting...</p>
-  </div>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-<script>
-/* DARK / LIGHT MODE */
-modeBtn.onclick = () => {
-  const body = document.body;
-  if(body.classList.contains("dark")) { body.classList.replace("dark","light"); modeBtn.textContent="Dark Mode"; }
-  else { body.classList.replace("light","dark"); modeBtn.textContent="Light Mode"; }
-};
-
-/* CHART DATA */
-let hrData = [], spoData = [], labels = [];
-
-/* HEART RATE CHART */
-const heartrateChart = new Chart(document.getElementById("heartrateChart"), {
-  type: "line",
-  data: { labels, datasets:[{ label:"Heart Rate", data:hrData, borderColor:"cyan", borderWidth:2, pointRadius:0, tension:0.3 }] },
-  options:{ responsive:true }
-});
-
-/* SPO2 CHART */
-const spo2Chart = new Chart(document.getElementById("spo2Chart"), {
-  type: "line",
-  data: { labels, datasets:[{ label:"SpO₂", data:spoData, borderColor:"lime", borderWidth:2, pointRadius:0, tension:0.3 }] },
-  options:{ responsive:true }
-});
-
-/* SIMULATE DATA */
-function generateRandomData() {
-  const hr = Math.floor(Math.random()*40)+60; // 60-100 BPM
-  const spo = Math.floor(Math.random()*5)+95; // 95-99%
-  return { heartrate: hr, spo2: spo };
-}
-
-function updateDashboard() {
-  const newData = generateRandomData();
-  
-  if(hrData.length >= 50) { hrData.shift(); spoData.shift(); labels.shift(); }
-  
-  labels.push(""); 
-  hrData.push(newData.heartrate); 
-  spoData.push(newData.spo2);
-  
-  heartrateChart.update();
-  spo2Chart.update();
-  
-  document.getElementById("lastReading").innerText =
-    `HR: ${newData.heartrate} BPM | SpO₂: ${newData.spo2}%`;
-}
-
-setInterval(updateDashboard, 2000);
-updateDashboard();
-</script>
-
-</body>
-</html>
