@@ -6,83 +6,26 @@
 <title>ESP32 Cyber Dashboard</title>
 
 <style>
-/* ===== RESET ===== */
-body, html {
-  margin: 0;
-  padding: 0;
-  font-family: "Segoe UI", sans-serif;
-  transition: background 0.4s ease, color 0.4s ease;
-}
+body, html { margin:0; padding:0; font-family:"Segoe UI", sans-serif; transition: background 0.4s, color 0.4s;}
+body.dark { background:#0a0f1a; color:#e0e0e0; }
+body.light { background:#e0f7fa; color:#004d40; }
 
-/* ===== DARK / LIGHT MODE ===== */
-body.dark { background: #0a0f1a; color: #e0e0e0; }
-body.light { background: #e0f7fa; color: #004d40; }
+.dashboard { width:95%; margin:20px auto; display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:15px; }
 
-/* ===== DASHBOARD GRID ===== */
-.dashboard {
-  width: 95%;
-  margin: 20px auto;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 15px;
-}
+.card { background:rgba(0,0,0,0.35); backdrop-filter:blur(12px); border:1px solid rgba(0,255,255,0.15); border-radius:14px; padding:15px; box-shadow:0 0 15px rgba(0,255,255,0.12); transition: transform 0.2s, background 0.4s, border 0.4s; }
+.card:hover { transform:scale(1.03);}
+body.light .card { background: rgba(255,255,255,0.8); border:1px solid rgba(0,150,136,0.4); box-shadow:0 0 10px rgba(0,150,136,0.3); }
 
-/* ===== CARD ===== */
-.card {
-  background: rgba(0,0,0,0.35);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(0, 255, 255, 0.15);
-  border-radius: 14px;
-  padding: 15px;
-  box-shadow: 0 0 15px rgba(0,255,255,0.12);
-  transition: transform 0.2s ease, background 0.4s ease, border 0.4s ease;
-}
-.card:hover { transform: scale(1.03); }
-body.light .card {
-  background: rgba(255, 255, 255, 0.8);
-  border: 1px solid rgba(0, 150, 136, 0.4);
-  box-shadow: 0 0 10px rgba(0,150,136,0.3);
-}
+h2 { text-align:center; margin:15px 0; font-size:26px; text-shadow:0 0 6px cyan; animation:glow 2s infinite alternate; }
+@keyframes glow { from{ text-shadow:0 0 4px cyan;} to{ text-shadow:0 0 12px cyan;} }
 
-/* ===== TITLE ===== */
-h2 {
-  text-align: center;
-  margin: 15px 0;
-  font-size: 26px;
-  text-shadow: 0 0 6px cyan;
-  animation: glow 2s infinite alternate;
-}
-@keyframes glow { from { text-shadow: 0 0 4px cyan; } to { text-shadow: 0 0 12px cyan; } }
+#modeBtn { position:fixed; right:20px; top:15px; padding:10px 16px; background:#00bcd4; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:bold; transition:0.3s;}
+#modeBtn:hover { background:#00796b;}
 
-/* ===== MODE BUTTON ===== */
-#modeBtn {
-  position: fixed;
-  right: 20px;
-  top: 15px;
-  padding: 10px 16px;
-  background: #00bcd4;
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: bold;
-  transition: 0.3s;
-}
-#modeBtn:hover { background: #00796b; }
-
-/* ===== CHARTS ===== */
-canvas { width: 100% !important; height: 220px !important; }
-
-/* ===== LAST READING ===== */
-#lastReading { font-size: 20px; margin-top: 15px; text-align: center; }
-
-/* ===== RESPONSIVE ===== */
-@media(max-width:500px){
-  .dashboard { grid-template-columns: 1fr; }
-}
+canvas { width:100% !important; height:220px !important; }
+#lastReading { font-size:20px; margin-top:15px; text-align:center; }
 </style>
 </head>
-
 <body class="dark">
 
 <button id="modeBtn">Light Mode</button>
@@ -110,89 +53,46 @@ canvas { width: 100% !important; height: 220px !important; }
 const modeBtn = document.getElementById("modeBtn");
 modeBtn.onclick = () => {
   const body = document.body;
-  if(body.classList.contains("dark")) {
-    body.classList.replace("dark","light"); modeBtn.textContent="Dark Mode";
-  } else { body.classList.replace("light","dark"); modeBtn.textContent="Light Mode"; }
+  if(body.classList.contains("dark")) { body.classList.replace("dark","light"); modeBtn.textContent="Dark Mode"; }
+  else { body.classList.replace("light","dark"); modeBtn.textContent="Light Mode"; }
 };
 
-/* ===== CHART DATA ===== */
+/* ===== Charts ===== */
 let hrData=[], spoData=[], labels=[];
 
 const heartrateChart = new Chart(document.getElementById("heartrateChart"), {
-  type: 'line',
-  data: {
-    labels: labels,
-    datasets: [{
-      label: 'Heart Rate',
-      data: hrData,
-      borderColor: '#00ffff',
-      backgroundColor: 'rgba(0,255,255,0.2)',
-      tension: 0.4,
-      borderWidth: 2,
-      fill: true,
-      pointRadius: 3,
-      pointHoverRadius: 6
-    }]
-  },
-  options: {
-    responsive: true,
-    animation:{ duration:600 },
-    plugins:{ legend:{ display:true, labels:{ color:'#00ffff' } } },
-    scales: { y:{ beginAtZero:true, ticks:{ color:'#00ffff' } }, x:{ ticks:{ color:'#00ffff' } } }
-  }
+  type:'line',
+  data:{ labels, datasets:[{ label:'Heart Rate', data:hrData, borderColor:'#00ffff', backgroundColor:'rgba(0,255,255,0.2)', tension:0.4, borderWidth:2, fill:true, pointRadius:3, pointHoverRadius:6 }]},
+  options:{ responsive:true, animation:{duration:600}, plugins:{legend:{labels:{color:'#00ffff'}}}, scales:{y:{beginAtZero:true,ticks:{color:'#00ffff'}}, x:{ticks:{color:'#00ffff'}}} }
 });
 
 const spo2Chart = new Chart(document.getElementById("spo2Chart"), {
   type:'line',
-  data:{
-    labels:labels,
-    datasets:[{
-      label:'SpO₂',
-      data:spoData,
-      borderColor:'#ff00ff',
-      backgroundColor:'rgba(255,0,255,0.2)',
-      tension:0.4,
-      borderWidth:2,
-      fill:true,
-      pointRadius:3,
-      pointHoverRadius:6
-    }]
-  },
-  options:{
-    responsive:true,
-    animation:{ duration:600 },
-    plugins:{ legend:{ display:true, labels:{ color:'#ff00ff' } } },
-    scales:{ y:{ beginAtZero:true, ticks:{ color:'#ff00ff' } }, x:{ ticks:{ color:'#ff00ff' } } }
-  }
+  data:{ labels, datasets:[{ label:'SpO₂', data:spoData, borderColor:'#ff00ff', backgroundColor:'rgba(255,0,255,0.2)', tension:0.4, borderWidth:2, fill:true, pointRadius:3, pointHoverRadius:6 }]},
+  options:{ responsive:true, animation:{duration:600}, plugins:{legend:{labels:{color:'#ff00ff'}}}, scales:{y:{beginAtZero:true,ticks:{color:'#ff00ff'}}, x:{ticks:{color:'#ff00ff'}}} }
 });
 
-/* ===== FETCH DATA FROM API ===== */
-async function fetchData() {
-  try {
-    const res = await fetch("/api/get"); // API endpoint
-    if(!res.ok) throw new Error(`HTTP error ${res.status}`);
-    const data = await res.json();
-    if(!Array.isArray(data)) return;
-
-    labels.length=0; hrData.length=0; spoData.length=0;
-    data.forEach(d => {
-      labels.push(""); 
-      hrData.push(d.heartrate);
-      spoData.push(d.spo2);
-    });
-
-    const last = data[data.length-1];
-    document.getElementById("lastReading").innerText =
-      `HR: ${last.heartrate} BPM   |   SpO₂: ${last.spo2}%`;
-
-    heartrateChart.update();
-    spo2Chart.update();
-  } catch(err) { console.error("Fetch Error:", err); }
+/* ===== Simulate Data ===== */
+function generateRandomData() {
+  const hr = Math.floor(Math.random()*40)+60; // 60-100 BPM
+  const spo = Math.floor(Math.random()*10)+90; // 90-100%
+  return {heartrate:hr, spo2:spo};
 }
 
-/* ===== AUTO REFRESH ===== */
-setInterval(fetchData,2000);
-fetchData();
+function updateDashboard() {
+  const d = generateRandomData();
+  
+  if(labels.length>=50){ labels.shift(); hrData.shift(); spoData.shift(); }
+  labels.push(""); hrData.push(d.heartrate); spoData.push(d.spo2);
+  
+  heartrateChart.update();
+  spo2Chart.update();
+  
+  document.getElementById("lastReading").innerText = `HR: ${d.heartrate} BPM   |   SpO₂: ${d.spo2}%`;
+}
+
+setInterval(updateDashboard,2000);
+updateDashboard();
 </script>
 </body>
 </html>
