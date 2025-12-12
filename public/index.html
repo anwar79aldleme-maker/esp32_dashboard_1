@@ -1,184 +1,157 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>ESP32 Cyber Dashboard</title>
-
-<!-- Google Font -->
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
-
-<!-- Chart.js -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-<style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ESP32 Health Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
     body {
-        margin: 0;
-        font-family: 'Orbitron', sans-serif;
-        background: radial-gradient(circle at center, #0b0f16, #05070a 80%);
-        color: #00ffc3;
-        overflow-x: hidden;
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+      background: #f5f6fa;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
 
     .container {
-        width: 90%;
-        margin: auto;
-        margin-top: 30px;
-    }
-
-    h1 {
-        text-align: center;
-        color: #08ffd9;
-        text-shadow: 0 0 20px #00ffd5;
-        font-size: 40px;
-    }
-
-    .cards {
-        display: flex;
-        justify-content: space-around;
-        flex-wrap: wrap;
-        margin-top: 30px;
+      width: 95%;
+      max-width: 1100px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-gap: 10px;
+      margin-top: 10px;
     }
 
     .card {
-        background: rgba(0, 255, 180, 0.05);
-        border: 1px solid #00ffbf44;
-        width: 28%;
-        min-width: 250px;
-        padding: 20px;
-        text-align: center;
-        border-radius: 15px;
-        margin: 10px;
-        box-shadow: 0 0 20px #00ffc233;
-        backdrop-filter: blur(6px);
-        transition: 0.3s;
+      background: white;
+      padding: 10px;
+      border-radius: 14px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      text-align: center;
     }
 
-    .card:hover {
-        transform: scale(1.05);
-        box-shadow: 0 0 25px #00ffcc;
-    }
-
-    .value {
-        font-size: 48px;
-        font-weight: bold;
-        text-shadow: 0 0 15px #00ffea;
+    h2 {
+      margin: 5px 0 10px 0;
+      font-size: 18px;
     }
 
     canvas {
-        margin-top: 30px;
-        background: rgba(0, 255, 180, 0.03);
-        border: 1px solid #00ffc233;
-        border-radius: 10px;
-        box-shadow: 0 0 25px #00ffc222;
+      width: 100% !important;
+      height: 180px !important;
     }
 
-    /* Cyber Grid Background */
-    .grid {
-        background-image: linear-gradient(rgba(0,255,200,0.05) 1px, transparent 1px),
-                          linear-gradient(90deg, rgba(0,255,200,0.05) 1px, transparent 1px);
-        background-size: 40px 40px;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        z-index: -1;
-        pointer-events: none;
+    .values {
+      font-size: 22px;
+      font-weight: bold;
+      color: #0078ff;
+      margin-top: 5px;
     }
-</style>
+
+    /* Smaller top summary bar */
+    .summary {
+      width: 95%;
+      max-width: 1100px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-gap: 10px;
+      margin-top: 10px;
+    }
+
+    .summary .card {
+      padding: 8px;
+    }
+
+    .summary h3 {
+      margin: 0;
+      font-size: 16px;
+    }
+
+    .summary .values {
+      font-size: 20px;
+    }
+  </style>
 </head>
-
 <body>
-<div class="grid"></div>
+  <h1>ESP32 Compact Health Dashboard</h1>
 
-<div class="container">
-    <h1>ESP32 Cyber Dashboard</h1>
+  <div class="summary">
+    <div class="card">
+      <h3>Heart Rate</h3>
+      <div id="hrValue" class="values">--</div>
+    </div>
+    <div class="card">
+      <h3>SpO₂</h3>
+      <div id="spo2Value" class="values">--</div>
+    </div>
+    <div class="card">
+      <h3>Last Update</h3>
+      <div id="timeValue" class="values">--</div>
+    </div>
+  </div>
 
-    <div class="cards">
-        <div class="card">
-            <h3>Heart Rate</h3>
-            <div class="value" id="hrValue">--</div>
-        </div>
-
-        <div class="card">
-            <h3>SpO₂</h3>
-            <div class="value" id="spoValue">--</div>
-        </div>
-
-        <div class="card">
-            <h3>Last Update</h3>
-            <div class="value" id="timeValue">--</div>
-        </div>
+  <div class="container">
+    <div class="card">
+      <h2>Heart Rate Chart</h2>
+      <canvas id="hrChart"></canvas>
     </div>
 
-    <canvas id="chartHR" height="120"></canvas>
-    <canvas id="chartSPO2" height="120"></canvas>
-</div>
+    <div class="card">
+      <h2>SpO₂ Chart</h2>
+      <canvas id="spo2Chart"></canvas>
+    </div>
+  </div>
 
 <script>
-let hrChart, spoChart;
+const hrCtx = document.getElementById('hrChart').getContext('2d');
+const spo2Ctx = document.getElementById('spo2Chart').getContext('2d');
 
-// Create chart function
-function createChart(ctx, label, color) {
-    return new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: [],
-            datasets: [{
-                label: label,
-                data: [],
-                borderWidth: 2,
-                borderColor: color,
-                pointRadius: 0,
-                tension: 0.2
-            }]
-        },
-        options: {
-            animation: false,
-            responsive: true,
-            scales: {
-                x: { ticks: { color: "#00ffe0" }},
-                y: { ticks: { color: "#00ffe0" }}
-            }
-        }
-    });
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-    hrChart = createChart(document.getElementById("chartHR"), "Heart Rate", "#00ffcc");
-    spoChart = createChart(document.getElementById("chartSPO2"), "SpO₂", "#00ffaa");
-
-    setInterval(fetchData, 1500);
+let hrChart = new Chart(hrCtx, {
+  type: 'line',
+  data: { labels: [], datasets: [{ label: 'Heart Rate', data: [], borderWidth: 2 }] },
+  options: { responsive: true, plugins: { legend: { display: false } } }
 });
 
-async function fetchData() {
-    try {
-        const response = await fetch("/api/sensor");
-        let data = await response.json();
+let spo2Chart = new Chart(spo2Ctx, {
+  type: 'line',
+  data: { labels: [], datasets: [{ label: 'SpO2', data: [], borderWidth: 2 }] },
+  options: { responsive: true, plugins: { legend: { display: false } } }
+});
 
-        if (!Array.isArray(data)) return;
+async function loadData() {
+  try {
+    const res = await fetch('/api/getData');
+    const data = await res.json();
 
-        let last = data[data.length - 1];
+    const labels = data.map((_, i) => i);
+    const hr = data.map(d => d.heart_rate);
+    const spo2 = data.map(d => d.spo2);
 
-        document.getElementById("hrValue").innerText = last.heartrate;
-        document.getElementById("spoValue").innerText = last.spo2;
-        document.getElementById("timeValue").innerText = new Date(last.time).toLocaleTimeString();
+    // Update charts
+    hrChart.data.labels = labels;
+    hrChart.data.datasets[0].data = hr;
+    hrChart.update();
 
-        updateChart(hrChart, data.map(x => x.heartrate));
-        updateChart(spoChart, data.map(x => x.spo2));
+    spo2Chart.data.labels = labels;
+    spo2Chart.data.datasets[0].data = spo2;
+    spo2Chart.update();
 
-    } catch (err) {
-        console.log("Dashboard fetch error:", err);
+    // Update summary
+    if (data.length > 0) {
+      document.getElementById('hrValue').innerText = hr[hr.length-1];
+      document.getElementById('spo2Value').innerText = spo2[spo2.length-1];
+      document.getElementById('timeValue').innerText = new Date().toLocaleTimeString();
     }
+
+  } catch (err) {
+    console.error('Error loading data:', err);
+  }
 }
 
-function updateChart(chart, values) {
-    chart.data.labels = values.map((v, i) => i);
-    chart.data.datasets[0].data = values;
-    chart.update();
-}
+setInterval(loadData, 2000);
+loadData();
 </script>
-
 </body>
 </html>
