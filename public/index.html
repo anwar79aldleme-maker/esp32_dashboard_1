@@ -1,116 +1,203 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Cyber Dark Dashboard</title>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <style>
-    body {
-      background: #0d0d0f;
-      font-family: 'Segoe UI', sans-serif;
-      color: #e0e0e0;
-    }
-    .card {
-      background: #141418;
-      border: 1px solid #1f1f24;
-      border-radius: 16px;
-      padding: 20px;
-      box-shadow: 0 0 15px rgba(0,255,255,0.1);
-    }
-    .glow-text {
-      color: cyan;
-      text-shadow: 0 0 8px cyan;
-    }
-    .small-card { width: 220px; }
-    .chart-card { height: 320px; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ESP32 Cyber Dashboard</title>
+
+<style>
+/* ========== RESET ========== */
+body, html {
+  margin: 0;
+  padding: 0;
+  font-family: "Segoe UI", sans-serif;
+  transition: background 0.4s ease, color 0.4s ease;
+  overflow-x: hidden;
+}
+
+/* ========== DARK / LIGHT MODE ========== */
+body.dark {
+  background: #0a0f1a;
+  color: #e0e0e0;
+}
+body.light {
+  background: #f5f5f5;
+  color: #111;
+}
+
+/* ========== CONTAINER ========== */
+.dashboard {
+  width: 95%;
+  margin: 20px auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 15px;
+}
+
+/* ========== CARD STYLE ========== */
+.card {
+  background: rgba(0,0,0,0.35);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(0, 255, 255, 0.15);
+  border-radius: 14px;
+  padding: 15px;
+  box-shadow: 0 0 15px rgba(0,255,255,0.12);
+  animation: pop 0.7s ease;
+  transition: transform 0.2s ease;
+}
+.card:hover {
+  transform: scale(1.03);
+}
+
+/* Animation */
+@keyframes pop {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ========== TITLE ========== */
+h2 {
+  text-align: center;
+  margin: 15px 0;
+  font-size: 26px;
+  text-shadow: 0 0 6px cyan;
+  animation: glow 2s infinite alternate;
+}
+
+/* Glow animation */
+@keyframes glow {
+  from { text-shadow: 0 0 4px cyan; }
+  to { text-shadow: 0 0 12px cyan; }
+}
+
+/* ========== DARK/LIGHT BUTTON ========== */
+#modeBtn {
+  position: fixed;
+  right: 20px;
+  top: 15px;
+  padding: 10px 16px;
+  background: cyan;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: 0.3s;
+}
+#modeBtn:hover {
+  background: #00a4a4;
+}
+
+/* ========== CHARTS ========== */
+canvas {
+  width: 100% !important;
+  height: 200px !important;
+}
+</style>
 </head>
-<body class="p-6">
-  <h1 class="text-3xl font-bold glow-text mb-6 text-center">Cyber Dark Dashboard</h1>
 
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 justify-items-center">
-    <div class="card small-card text-center">
-      <h2 class="text-xl glow-text font-bold">Heart Rate</h2>
-      <p id="hr_value" class="text-4xl font-bold mt-2">--</p>
-    </div>
+<body class="dark">
 
-    <div class="card small-card text-center">
-      <h2 class="text-xl glow-text font-bold">SpO₂</h2>
-      <p id="spo2_value" class="text-4xl font-bold mt-2">--</p>
-    </div>
+<button id="modeBtn">Light Mode</button>
 
-    <div class="card small-card text-center">
-      <h2 class="text-xl glow-text font-bold">Status</h2>
-      <p id="status" class="text-2xl font-semibold mt-2">Waiting...</p>
-    </div>
+<h2>⚡ ESP32 Cyber Dashboard</h2>
+
+<div class="dashboard">
+
+  <div class="card">
+    <h3>Heart Rate (BPM)</h3>
+    <canvas id="heartrateChart"></canvas>
   </div>
 
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-    <div class="card chart-card">
-      <h2 class="text-xl glow-text text-center mb-2">Heart Rate Chart</h2>
-      <canvas id="hrChart"></canvas>
-    </div>
-
-    <div class="card chart-card">
-      <h2 class="text-xl glow-text text-center mb-2">SpO₂ Chart</h2>
-      <canvas id="spo2Chart"></canvas>
-    </div>
+  <div class="card">
+    <h3>SpO₂ (%)</h3>
+    <canvas id="spo2Chart"></canvas>
   </div>
+
+  <div class="card">
+    <h3>Last Reading</h3>
+    <p id="lastReading" style="font-size:20px; margin-top:15px;">Waiting...</p>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
-let hrChart, spo2Chart;
+/* ========== DARK/LIGHT MODE SWITCH ========== */
+document.getElementById("modeBtn").onclick = () => {
+  const body = document.body;
+  if (body.classList.contains("dark")) {
+    body.classList.replace("dark", "light");
+    modeBtn.textContent = "Dark Mode";
+  } else {
+    body.classList.replace("light", "dark");
+    modeBtn.textContent = "Light Mode";
+  }
+};
 
+/* ========== INITIAL CHART DATA ========== */
+let hrData = [];
+let spoData = [];
+let labels = [];
+
+/* ========== CHARTS ========== */
+const heartrateChart = new Chart(document.getElementById("heartrateChart"), {
+  type: "line",
+  data: {
+    labels,
+    datasets: [{
+      label: "Heart Rate",
+      data: hrData,
+      borderWidth: 2
+    }]
+  }
+});
+
+const spo2Chart = new Chart(document.getElementById("spo2Chart"), {
+  type: "line",
+  data: {
+    labels,
+    datasets: [{
+      label: "SpO₂",
+      data: spoData,
+      borderWidth: 2
+    }]
+  }
+});
+
+/* ========== FETCH DATA FROM API ========== */
 async function fetchData() {
   try {
-    const res = await fetch('/api/sensor');
+    const res = await fetch("/api/get");
     const data = await res.json();
 
-    document.getElementById('status').innerText = 'Online';
+    if (!Array.isArray(data)) return;
 
-    const hr = data.map(d => d.heartrate);
-    const spo2 = data.map(d => d.spo2);
-    const labels = data.map(d => new Date(d.time).toLocaleTimeString());
+    labels.length = 0;
+    hrData.length = 0;
+    spoData.length = 0;
 
-    document.getElementById('hr_value').innerText = hr[hr.length - 1];
-    document.getElementById('spo2_value').innerText = spo2[spo2.length - 1];
+    data.forEach(d => {
+      labels.push("");
+      hrData.push(d.heartrate);
+      spoData.push(d.spo2);
+    });
 
-    if (!hrChart) initCharts(labels, hr, spo2);
-    else updateCharts(labels, hr, spo2);
-  } catch {
-    document.getElementById('status').innerText = 'Offline';
+    const last = data[data.length - 1];
+    document.getElementById("lastReading").innerText =
+      `HR: ${last.heartrate} BPM   |   SpO₂: ${last.spo2}%`;
+
+    heartrateChart.update();
+    spo2Chart.update();
+
+  } catch (err) {
+    console.error("Fetch Error:", err);
   }
 }
 
-function initCharts(labels, hr, spo2) {
-  const ctx1 = document.getElementById('hrChart').getContext('2d');
-  const ctx2 = document.getElementById('spo2Chart').getContext('2d');
-
-  hrChart = new Chart(ctx1, {
-    type: 'line',
-    data: { labels, datasets: [{ label: 'Heart Rate', data: hr, borderColor: 'cyan', borderWidth: 2 }] },
-    options: { responsive: true, maintainAspectRatio: false }
-  });
-
-  spo2Chart = new Chart(ctx2, {
-    type: 'line',
-    data: { labels, datasets: [{ label: 'SpO2', data: spo2, borderColor: 'magenta', borderWidth: 2 }] },
-    options: { responsive: true, maintainAspectRatio: false }
-  });
-}
-
-function updateCharts(labels, hr, spo2) {
-  hrChart.data.labels = labels;
-  hrChart.data.datasets[0].data = hr;
-  hrChart.update();
-
-  spo2Chart.data.labels = labels;
-  spo2Chart.data.datasets[0].data = spo2;
-  spo2Chart.update();
-}
-
-setInterval(fetchData, 1500);
+setInterval(fetchData, 2000);
+fetchData();
 </script>
+
 </body>
 </html>
