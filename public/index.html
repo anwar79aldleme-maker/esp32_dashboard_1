@@ -88,7 +88,8 @@ function updateDashboard() {
   heartrateChart.update();
   spo2Chart.update();
   
-  document.getElementById("lastReading").innerHTML = `HR: ${hr} BPM<br>SpO₂: ${spo2}%`;
+ document.getElementById("lastReading").innerHTML =
+    `HR: <strong>${hr}</strong> BPM<br>SpO₂: <strong>${spo2}</strong>%`;
 }
 
 setInterval(updateDashboard,2000);
