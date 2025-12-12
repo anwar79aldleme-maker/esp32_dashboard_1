@@ -87,10 +87,10 @@ const spo2Chart = new Chart(document.getElementById("spo2Chart"), {
 /* ===== Fetch data from Neon ===== */
 async function fetchData() {
   try {
-    const res = await fetch("/api/get"); // استبدل بالمسار الصحيح للـ API
+    const res = await fetch("/api/get");
     if(!res.ok) throw new Error(`HTTP error ${res.status}`);
     const data = await res.json();
-    if(!Array.isArray(data) || data.length === 0) return; // لا عرض شيء إذا لم تصل بيانات
+    if(!Array.isArray(data) || data.length === 0) return;
 
     // تحديث المخططات
     labels.length=0; hrData.length=0; spoData.length=0;
@@ -103,7 +103,7 @@ async function fetchData() {
     heartrateChart.update();
     spo2Chart.update();
 
-    // تحديث Last Reading
+    // Last Reading في سطرين
     const last = data[data.length-1];
     document.getElementById("lastReading").innerHTML = 
       `HR: <strong>${last.heartrate}</strong> BPM<br>SpO₂: <strong>${last.spo2}</strong>%`;
@@ -113,7 +113,7 @@ async function fetchData() {
   }
 }
 
-setInterval(fetchData,2000); // تحديث كل ثانيتين
+setInterval(fetchData,2000);
 fetchData();
 </script>
 </body>
