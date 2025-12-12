@@ -70,7 +70,7 @@ modeBtn.onclick = () => {
 };
 
 /* ===== Charts ===== */
-let hrData=[], spoData=[], labels=[];
+let hrData=[], spoData=[], labels=[], lastTime=null;
 
 const heartrateChart = new Chart(document.getElementById("heartrateChart"), {
   type:'line',
@@ -85,42 +85,33 @@ const spo2Chart = new Chart(document.getElementById("spo2Chart"), {
 });
 
 /* ===== Fetch data from Neon ===== */
-let lastTime = null;
-
 async function fetchData() {
   try {
-    const res = await fetch("/api/get");
-    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    const url = lastTime ? `/api/get?lastTime=${lastTime}` : '/api/get';
+    const res = await fetch(url);
+    if(!res.ok) throw new Error(`HTTP error ${res.status}`);
     const data = await res.json();
-    if (!Array.isArray(data) || data.length === 0) return;
+    if(!Array.isArray(data) || data.length === 0) return; // لا عرض شيء إذا لم تصل بيانات
 
-    // اختر فقط القراءات الجديدة
-    const newData = lastTime ? data.filter(d => new Date(d.time) > new Date(lastTime)) : data;
-
-    newData.forEach(d => {
-      if (labels.length >= 50) { labels.shift(); hrData.shift(); spoData.shift(); }
-      labels.push(""); // label فارغ
-      hrData.push(d.heartrate);
-      spoData.push(d.spo2);
+    data.forEach(d => {
+      if(labels.length>=50){ labels.shift(); hrData.shift(); spoData.shift(); }
+      labels.push(""); hrData.push(d.heartrate); spoData.push(d.spo2);
       lastTime = d.time;
     });
 
-    if (newData.length) {
-      heartrateChart.update();
-      spo2Chart.update();
+    heartrateChart.update();
+    spo2Chart.update();
 
-      const last = newData[newData.length-1];
-      document.getElementById("lastReading").innerHTML =
-        `HR: <strong>${last.heartrate}</strong> BPM<br>SpO₂: <strong>${last.spo2}</strong>%`;
-    }
+    const last = data[data.length-1];
+    document.getElementById("lastReading").innerHTML =
+      `HR: <strong>${last.heartrate}</strong> BPM<br>SpO₂: <strong>${last.spo2}</strong>%`;
 
-  } catch (err) {
+  } catch(err) {
     console.error("Fetch Error:", err);
   }
 }
 
-
-setInterval(fetchData,2000);
+setInterval(fetchData,2000); // تحديث كل ثانيتين
 fetchData();
 </script>
 </body>
