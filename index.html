@@ -88,30 +88,34 @@ const spo2Chart = new Chart(document.getElementById("spo2Chart"), {
 async function fetchData() {
   try {
     const res = await fetch("/api/get");
-    if(!res.ok) throw new Error(`HTTP error ${res.status}`);
+    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
     const data = await res.json();
-    if(!Array.isArray(data) || data.length === 0) return;
+    if (!Array.isArray(data) || data.length === 0) return; // لا عرض شيء إذا لم تصل بيانات
 
-    // تحديث المخططات
-    labels.length=0; hrData.length=0; spoData.length=0;
-    data.forEach(d => {
-      labels.push(""); 
-      hrData.push(d.heartrate);
-      spoData.push(d.spo2);
-    });
+    // تحديث المخططات: إضافة آخر قيمة فقط
+    const d = data[0]; // آخر قراءة
+    if (!d) return;
+
+    if (labels.length >= 50) { // حافظ على آخر 50 نقطة في المخطط
+      labels.shift();
+      hrData.shift();
+      spoData.shift();
+    }
+
+    labels.push(""); // label فارغ للخط
+    hrData.push(d.heartrate);
+    spoData.push(d.spo2);
 
     heartrateChart.update();
     spo2Chart.update();
 
-    // Last Reading في سطرين
-    const last = data[data.length-1];
     document.getElementById("lastReading").innerHTML = 
-      `HR: <strong>${last.heartrate}</strong> BPM<br>SpO₂: <strong>${last.spo2}</strong>%`;
-
-  } catch(err) {
+      `HR: <strong>${d.heartrate}</strong> BPM<br>SpO₂: <strong>${d.spo2}</strong>%`;
+  } catch (err) {
     console.error("Fetch Error:", err);
   }
 }
+
 
 setInterval(fetchData,2000);
 fetchData();
