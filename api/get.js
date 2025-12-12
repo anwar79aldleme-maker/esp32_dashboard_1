@@ -1,6 +1,5 @@
 import { neon } from '@neondatabase/serverless';
 
-// تأكد من إضافة DATABASE_URL في متغيرات البيئة على Vercel
 const client = new neon(process.env.DATABASE_URL);
 
 export default async function handler(req, res) {
@@ -9,7 +8,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    // جلب آخر 50 قراءة من جدول sensor_data
     const result = await client.query(
       `SELECT heartrate, spo2, time 
        FROM sensor_data 
@@ -25,9 +23,9 @@ export default async function handler(req, res) {
       time: r.time
     }));
 
-    res.status(200).json(data);
+    return res.status(200).json(data);
   } catch (err) {
     console.error('Database fetch error:', err.message);
-    res.status(500).json({ message: 'Database fetch failed', detail: err.message });
+    return res.status(500).json({ message: 'Database fetch failed', detail: err.message });
   }
 }
