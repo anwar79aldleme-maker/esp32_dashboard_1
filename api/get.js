@@ -4,7 +4,7 @@ const client = new neon(process.env.DATABASE_URL);
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
-    return res.status(405).json({ message: 'Method not allowed' });
+    return res.status(405).json({ message: 'Method Not Allowed' });
   }
 
   try {
@@ -15,17 +15,15 @@ export default async function handler(req, res) {
        LIMIT 50`
     );
 
-    const rows = result.rows || result;
-
-    const data = rows.map(r => ({
+    const data = (result.rows || []).map(r => ({
       heartrate: r.heartrate,
       spo2: r.spo2,
       time: r.time
     }));
 
     return res.status(200).json(data);
-  } catch (err) {
-    console.error('Database fetch error:', err.message);
-    return res.status(500).json({ message: 'Database fetch failed', detail: err.message });
+  } catch (error) {
+    console.error("Database fetch error:", error);
+    return res.status(500).json({ message: "Database fetch failed", detail: error.message });
   }
 }
