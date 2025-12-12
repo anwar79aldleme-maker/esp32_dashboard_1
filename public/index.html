@@ -23,7 +23,15 @@ h2 { text-align:center; margin:15px 0; font-size:26px; text-shadow:0 0 6px cyan;
 #modeBtn:hover { background:#00796b;}
 
 canvas { width:100% !important; height:220px !important; }
-#lastReading { font-size:20px; margin-top:15px; text-align:center; }
+
+/* Last Reading Style */
+#lastReading { 
+  font-size:32px; /* كبر الخط */
+  margin-top:15px; 
+  text-align:center; 
+  line-height:1.6; /* مسافة بين السطور */
+  color:#00ffff; /* Neon color */
+}
 </style>
 </head>
 <body class="dark">
@@ -53,8 +61,13 @@ canvas { width:100% !important; height:220px !important; }
 const modeBtn = document.getElementById("modeBtn");
 modeBtn.onclick = () => {
   const body = document.body;
-  if(body.classList.contains("dark")) { body.classList.replace("dark","light"); modeBtn.textContent="Dark Mode"; }
-  else { body.classList.replace("light","dark"); modeBtn.textContent="Light Mode"; }
+  if(body.classList.contains("dark")) { 
+    body.classList.replace("dark","light"); 
+    modeBtn.textContent="Dark Mode"; 
+  } else { 
+    body.classList.replace("light","dark"); 
+    modeBtn.textContent="Light Mode"; 
+  }
 };
 
 /* ===== Charts ===== */
@@ -88,7 +101,9 @@ function updateDashboard() {
   heartrateChart.update();
   spo2Chart.update();
   
-  document.getElementById("lastReading").innerText = `HR: ${d.heartrate} BPM   |   SpO₂: ${d.spo2}%`;
+  // Last Reading منفصل في سطرين
+  document.getElementById("lastReading").innerHTML = 
+    `HR: <strong>${d.heartrate}</strong> BPM<br>SpO₂: <strong>${d.spo2}</strong>%`;
 }
 
 setInterval(updateDashboard,2000);
