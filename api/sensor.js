@@ -38,7 +38,7 @@ export default async function handler(req, res) {
       try {
         console.log('Fetching data from Neon...');
         const result = await client.query(
-          'SELECT heartrate, spo2, time FROM sensor_data ORDER BY time ASC LIMIT 50'
+          'SELECT heartrate, spo2, time FROM sensor_data ORDER BY time ASC '
         );
 
         const rows = result.rows ? result.rows : result;
