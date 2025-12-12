@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ESP32 Cyber Dashboard</title>
+
+<style>
+body, html { margin:0; padding:0; font-family:"Segoe UI", sans-serif; transition: background 0.4s, color 0.4s;}
+body.dark { background:#0a0f1a; color:#e0e0e0; }
+body.light { background:#e0f7fa; color:#004d40; }
+
+.dashboard { width:95%; margin:20px auto; display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:15px; }
+
+.card { background:rgba(0,0,0,0.35); backdrop-filter:blur(12px); border:1px solid rgba(0,255,255,0.15); border-radius:14px; padding:15px; box-shadow:0 0 15px rgba(0,255,255,0.12); transition: transform 0.2s, background 0.4s, border 0.4s; }
+.card:hover { transform:scale(1.03);}
+body.light .card { background: rgba(255,255,255,0.8); border:1px solid rgba(0,150,136,0.4); box-shadow:0 0 10px rgba(0,150,136,0.3); }
+
+h2 { text-align:center; margin:15px 0; font-size:26px; text-shadow:0 0 6px cyan; animation:glow 2s infinite alternate; }
+@keyframes glow { from{ text-shadow:0 0 4px cyan;} to{ text-shadow:0 0 12px cyan;} }
+
+#modeBtn { position:fixed; right:20px; top:15px; padding:10px 16px; background:#00bcd4; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:bold; transition:0.3s;}
+#modeBtn:hover { background:#00796b;}
+
+canvas { width:100% !important; height:220px !important; }
+
+#lastReading { 
+  font-size:32px; 
+  margin-top:15px; 
+  text-align:center; 
+  line-height:1.6; 
+  color:#00ffff; 
+}
+</style>
+</head>
+<body class="dark">
+
+<button id="modeBtn">Light Mode</button>
+<h2>⚡ ESP32 Cyber Dashboard</h2>
+
+<div class="dashboard">
+  <div class="card">
+    <h3>Heart Rate (BPM)</h3>
+    <canvas id="heartrateChart"></canvas>
+  </div>
+
+  <div class="card">
+    <h3>SpO₂ (%)</h3>
+    <canvas id="spo2Chart"></canvas>
+  </div>
+
+  <div class="card">
+    <h3>Last Reading</h3>
+    <p id="lastReading">Waiting for data...</p>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const modeBtn = document.getElementById("modeBtn");
+modeBtn.onclick = () => {
+  const body = document.body;
+  if(body.classList.contains("dark")) { 
+    body.classList.replace("dark","light"); 
+    modeBtn.textContent="Dark Mode"; 
+  } else { 
+    body.classList.replace("light","dark"); 
+    modeBtn.textContent="Light Mode"; 
+  }
+};
+
+/* ===== Charts ===== */
+let hrData=[], spoData=[], labels=[], lastTime=null;
+
+const heartrateChart = new Chart(document.getElementById("heartrateChart"), {
+  type:'line',
+  data:{ labels, datasets:[{ label:'Heart Rate', data:hrData, borderColor:'#00ffff', backgroundColor:'rgba(0,255,255,0.2)', tension:0.4, borderWidth:2, fill:true, pointRadius:3, pointHoverRadius:6 }]},
+  options:{ responsive:true, animation:{duration:600}, plugins:{legend:{labels:{color:'#00ffff'}}}, scales:{y:{beginAtZero:true,ticks:{color:'#00ffff'}}, x:{ticks:{color:'#00ffff'}}} }
+});
+
+const spo2Chart = new Chart(document.getElementById("spo2Chart"), {
+  type:'line',
+  data:{ labels, datasets:[{ label:'SpO₂', data:spoData, borderColor:'#ff00ff', backgroundColor:'rgba(255,0,255,0.2)', tension:0.4, borderWidth:2, fill:true, pointRadius:3, pointHoverRadius:6 }]},
+  options:{ responsive:true, animation:{duration:600}, plugins:{legend:{labels:{color:'#ff00ff'}}}, scales:{y:{beginAtZero:true,ticks:{color:'#ff00ff'}}, x:{ticks:{color:'#ff00ff'}}} }
+});
+
+/* ===== Fetch data from Neon ===== */
+async function fetchData() {
+  try {
+    const url = lastTime ? `/api/get?lastTime=${lastTime}` : '/api/get';
+    const res = await fetch(url);
+    if(!res.ok) throw new Error(`HTTP error ${res.status}`);
+    const data = await res.json();
+    if(!Array.isArray(data) || data.length === 0) return; // لا عرض شيء إذا لم تصل بيانات
+
+    data.forEach(d => {
+      if(labels.length>=50){ labels.shift(); hrData.shift(); spoData.shift(); }
+      labels.push(""); hrData.push(d.heartrate); spoData.push(d.spo2);
+      lastTime = d.time;
+    });
+
+    heartrateChart.update();
+    spo2Chart.update();
+
+    const last = data[data.length-1];
+    document.getElementById("lastReading").innerHTML =
+      `HR: <strong>${last.heartrate}</strong> BPM<br>SpO₂: <strong>${last.spo2}</strong>%`;
+
+  } catch(err) {
+    console.error("Fetch Error:", err);
+  }
+}
+
+setInterval(fetchData,2000); // تحديث كل ثانيتين
+fetchData();
+</script>
+</body>
+</html>
