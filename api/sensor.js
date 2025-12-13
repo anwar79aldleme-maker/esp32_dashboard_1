@@ -1,6 +1,6 @@
 import { neon } from '@neondatabase/serverless';
 
-const sql = neon(process.env.DATABASE_URL);
+const client = new neon(process.env.DATABASE_URL);
 
 export default async function handler(req, res) {
   try {
@@ -15,32 +15,31 @@ export default async function handler(req, res) {
         return res.status(400).json({ message: 'Invalid data types' });
       }
 
-      try {
-        await sql`
-          INSERT INTO sensor_data (heartrate, spo2, time)
-          VALUES (${heartrate}, ${spo2}, NOW())
-        `;
-        return res.status(200).json({ message: 'Data saved successfully' });
-      } catch (err) {
-        return res.status(500).json({ message: 'Database insert failed', detail: err.message });
-      }
+      await client.query(
+        'INSERT INTO sensor_data (heartrate, spo2, time) VALUES ($1, $2, NOW())',
+        [heartrate, spo2]
+      );
 
-    } else if (req.method === 'GET') {
-      try {
-        const rows = await sql`
-          SELECT heartrate, spo2, time
-          FROM sensor_data
-          ORDER BY time ASC
-        `;
-        return res.status(200).json(rows);
-      } catch (err) {
-        return res.status(500).json({ message: 'Database fetch failed', detail: err.message });
-      }
-
-    } else {
-      return res.status(405).json({ message: 'Method not allowed' });
+      return res.status(200).json({ message: 'Data saved successfully' });
     }
+
+    if (req.method === 'GET') {
+      const result = await client.query(
+        'SELECT heartrate, spo2, time FROM sensor_data ORDER BY time ASC'
+      );
+
+      const data = result.rows.map(r => ({
+        heartrate: r.heartrate,
+        spo2: r.spo2,
+        time: r.time
+      }));
+
+      return res.status(200).json(data);
+    }
+
+    return res.status(405).json({ message: 'Method not allowed' });
   } catch (err) {
+    console.error(err);
     return res.status(500).json({ message: 'Server error', detail: err.message });
   }
 }
