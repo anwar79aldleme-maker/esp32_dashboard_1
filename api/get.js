@@ -13,7 +13,7 @@ export default async function handler(req, res) {
   try {
     const query = lastTime
       ? `SELECT id, heartrate, spo2, time FROM sensor_data WHERE time > $1 ORDER BY time ASC`
-      : `SELECT id, heartrate, spo2, time FROM sensor_data ORDER BY time ASC LIMIT 50`;
+      : `SELECT id, heartrate, spo2, time FROM sensor_data ORDER BY time ASC `;
 
     const result = await client.query(query, lastTime ? [lastTime] : []);
 
